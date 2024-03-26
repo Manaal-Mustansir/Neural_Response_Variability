@@ -18,20 +18,24 @@ spike_times_clusters = utils.get_spike_times(clusters, spike_times_sec)
 # Extract data for the first three trials
 trialDF_first_three = trialDF.head(3)
 
-fix, ax = plt.subplots(figsize=(10, len(spike_times_clusters) * 0.025))
+max_clusters = 250
+skip_clusters = 50
 
-for i, (cluster_index, Y) in enumerate(spike_times_clusters.items()):
+fix, ax = plt.subplots(figsize=(10, (max_clusters - skip_clusters) * 0.025))
+
+# Iterate over clusters, skipping the first 50 clusters
+for i, (cluster_index, Y) in enumerate(list(spike_times_clusters.items())[skip_clusters:max_clusters + skip_clusters]):
     for index, row in trialDF_first_three.iterrows():
         start_time = row['fixationstart']
         stop_time = row['fixationstop']
 
-        # Filter spike times within the trial window
-        spikes_in_trial = Y[(Y >= start_time - 0.2) & (Y <= stop_time)]
+        # Filter spike times within the trial window (5s to 10s)
+        spikes_in_trial = Y[(Y >= start_time + 5) & (Y <= start_time + 10)]
 
         # Plot raster plot
         ax.eventplot(spikes_in_trial - start_time, color='black', linewidths=0.5, lineoffsets=i+1)
 
 ax.set_xlabel('Time (s)')
 ax.set_ylabel('Clusters')
-ax.set_title('All Clusters')
+ax.set_title('Clusters')
 plt.show()
