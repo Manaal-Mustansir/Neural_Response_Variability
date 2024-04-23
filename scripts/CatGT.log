@@ -1,0 +1,9 @@
+[Thd 716 CPU 2 4/12/24 14:18:07.961] Cmdline: CatGT -dir=C:/Users/mmustans/Documents/Data/Electrophysiology/2024-04-11 -run=BSD -g=0 -t=0 -prb_fld -ni -ap -prb=0 -xia=0,0,3,2.5,3.5,0 -xa=0,0,3,2.5,1,0
+[Thd 716 CPU 2 4/12/24 14:18:07.961] Meta file not found 'C:/Users/mmustans/Documents/Data/Electrophysiology/2024-04-11/BSD_g0/BSD_g0_t0.nidq.meta'.
+[Thd 716 CPU 2 4/12/24 14:18:07.961] 
+[Thd 25400 CPU 8 4/12/24 14:18:52.712] Cmdline: CatGT -dir=C:/Users/mmustans/Documents/Data/Electrophysiology/2024-04-11 -run=BSD -g=0 -t=0 -prb_fld -ni -ap -prb=0 -xia=0,0,3,2.5,3.5,0 -xa=0,0,3,2.5,1,0
+[Thd 25400 CPU 8 4/12/24 14:18:52.712] Meta file not found 'C:/Users/mmustans/Documents/Data/Electrophysiology/2024-04-11/BSD_g0/BSD_g0_t0.nidq.meta'.
+[Thd 25400 CPU 10 4/12/24 14:18:52.712] 
+[Thd 18868 CPU 6 4/12/24 14:36:23.904] Cmdline: CatGT -dir=C:/Users/mmustans/Documents/Data/Electrophysiology/2024-02-01 -run=BSD -g=0 -t=0 -prb_fld -ni -ap -prb=0 -xia=0,0,3,2.5,3.5,0 -xa=0,0,3,2.5,1,0
+[Thd 18868 CPU 6 4/12/24 14:36:23.906] Meta file not found 'C:/Users/mmustans/Documents/Data/Electrophysiology/2024-02-01/BSD_g0/BSD_g0_t0.nidq.meta'.
+[Thd 18868 CPU 2 4/12/24 14:36:23.906] 
