@@ -140,12 +140,14 @@ def get_pupil_Diameter(stimulusDF, pupil_diameter,sRate):
     return inds_low, inds_high
 
 
+
 good_clusters = []
 spkC = {}
 BSL = {}
 spkC_zscored = {}
 
 inds_low, inds_high = get_pupil_Diameter(trialDF, pupil_diameter,sRate)
+
 
 for i in spike_times_clusters.keys():
     Y = spike_times_clusters[i]    
@@ -157,14 +159,15 @@ for i in spike_times_clusters.keys():
         mean_timevector, vari_timevector, mean_timevector_booted, vari_timevector_booted,t = return_psth(Y, trialDF)
         # Call with trialDF_high
         #mean_timevector, vari_timevector, mean_timevector_booted, vari_timevector_booted,t = return_psth(Y, trialDF)
-
+        fano_factor = vari_timevector / mean_timevector
         fig,ax = plt.subplots(2,1)
         t = np.linspace(-150,150,300)
         psth_low  = mean_timevector - np.std(mean_timevector_booted,axis=0)
         psth_high = mean_timevector + np.std(mean_timevector_booted,axis=0)
         ax[0].fill_between(t,psth_low,psth_high,color='grey')
-        ax[0].plot(t,mean_timevector,'k--')        
-        #ax[1].plot(t,fano_factor,'r-')
+        ax[0].plot(t,mean_timevector,'k--')      
+        #ax[1].plot(t, vari_timevector, 'r-')  
+        ax[1].plot(t,fano_factor,'r-')
 
 
 

@@ -160,13 +160,6 @@ plt.tight_layout()
 plt.tight_layout()
 plt.tight_layout()
 plt.savefig("C:/Users/mmustans/Documents/Projects/Neural_Response_Variability/results/2024-05-29_CSD.svg", format='svg')
-plt.show()
-
-plt.show()
-
-plt.show()
-
-plt.show()
 
 
 plt.tight_layout()

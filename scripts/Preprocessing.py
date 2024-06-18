@@ -10,7 +10,7 @@ CatGT_dir  = 'C:/Users/mmustans/Documents/GitHub/CatGTWinApp/CatGT-win/'
 TPrime_dir = 'C:/Users/mmustans/Documents/GitHub/TPrimeWinApp/TPrime-win/'
 
 # catGT parameters
-DIR = ' -dir=C:/Users/mmustans/Documents/Data/MM001_Sansa/Electrophysiology/2024-05-23'
+DIR = ' -dir=C:/Users/mmustans/Documents/Data/MM001_Sansa/Electrophysiology/2024-05-29'
 RUN = ' -run=BSD'
 prs = ' -g=0 -t=0 -ap -ni -prb_fld -prb=0'
 xa3 = ' -xa=0,0,3,2.5,1,0'  # trial start
