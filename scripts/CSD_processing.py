@@ -1,3 +1,5 @@
+
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -116,6 +118,9 @@ even_channels = list(range(2, nchannels, 2))
 CSD_FirstColumn = calculate_csd_First_Second_Column(LFP_avg_filtered, odd_channels)
 CSD_SecondColumn = calculate_csd_First_Second_Column(LFP_avg_filtered, even_channels)
 
+# Determine vmin and vmax for consistent color scaling
+vmin = min(CSD_FirstColumn.min(), CSD_SecondColumn.min())
+vmax = max(CSD_FirstColumn.max(), CSD_SecondColumn.max())
 
 # Plotting
 fig, axs = plt.subplots(2, 2, figsize=(20, 20))
@@ -145,7 +150,6 @@ fig.colorbar(im, ax=axs[1, 0], label='Source/Sink')
 axs[1, 0].axvline(x=0, color='blue', linestyle='-')
 axs[1, 0].axvline(x=post_stim_time * 1000, color='magenta', linestyle='-')
 axs[1, 0].set_xlabel('Time from stimulus onset (ms)')
-
 axs[1, 0].set_title('Current Source Density (CSD) - First Column')
 
 # Plot CSD of the Second Column
@@ -155,16 +159,11 @@ axs[1, 1].axvline(x=0, color='blue', linestyle='-')
 axs[1, 1].axvline(x=post_stim_time * 1000, color='magenta', linestyle='-')
 axs[1, 1].set_xlabel('Time from stimulus onset (ms)')
 axs[1, 1].set_title('Current Source Density (CSD) - Second Column')
-plt.tight_layout()
-plt.tight_layout()
-plt.tight_layout()
-plt.tight_layout()
 plt.savefig("C:/Users/mmustans/Documents/Projects/Neural_Response_Variability/results/2024-05-29_CSD.svg", format='svg')
 
 
 plt.tight_layout()
 plt.show()
-
 
 
 

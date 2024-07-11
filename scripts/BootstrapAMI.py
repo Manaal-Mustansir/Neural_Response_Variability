@@ -166,3 +166,14 @@ for c in good_clusters:
 
 
 
+# Variability calculation
+variability_low = np.std(spkC_low, axis=1) / np.mean(spkC_low, axis=1)
+variability_high = np.std(spkC_high, axis=1) / np.mean(spkC_high, axis=1)
+
+# Plotting the variability
+fig, ax = plt.subplots()
+ax.bar([1, 2], [np.mean(variability_low), np.mean(variability_high)], yerr=[np.std(variability_low), np.std(variability_high)])
+ax.set_xticks([1, 2])
+ax.set_xticklabels(['Low arousal', 'High arousal'])
+ax.set_title('Variability of Neuronal Responses: Low vs High Arousal')
+plt.show()
