@@ -167,6 +167,10 @@ for c in spike_times_clusters.keys():
     
     mean_psth_low, var_psth_low, _, _, _ = meanvar_PSTH(spike_data_low, count_window=20)
     mean_psth_high, var_psth_high, _, _, _ = meanvar_PSTH(spike_data_high, count_window=20)
+    
+    # Normalize the PSTHs by their respective maxima for each cluster
+    mean_psth_low_normalized = mean_psth_low/np.max(mean_psth_low)
+    mean_psth_high_normalized = mean_psth_high/np.max(mean_psth_high)
 
     # Calculate Fano factor
     fano_factor_low = var_psth_low / mean_psth_low
@@ -188,8 +192,8 @@ for c in spike_times_clusters.keys():
     stderr_psth_high = np.sqrt(var_psth_high) / np.sqrt(len(valid_inds_high))
 
     # Plot PSTH and Fano factor for low and high pupil diameters
-    axs[2].plot(time_vector, mean_psth_low * 10, color='black', linestyle='--', label='Low Pupil Diameter')
-    axs[2].plot(time_vector, mean_psth_high * 10, color='red', label='High Pupil Diameter')
+    axs[2].plot(time_vector, mean_psth_low_normalized * 10, color='black', linestyle='--', label='Low Pupil Diameter')
+    axs[2].plot(time_vector, mean_psth_high_normalized * 10, color='red', label='High Pupil Diameter')
 
     # Add fill_between for PSTH low
     axs[2].fill_between(time_vector, (mean_psth_low - stderr_psth_low) * 10, (mean_psth_low + stderr_psth_low) * 10, color='grey', alpha=0.3)
@@ -287,9 +291,63 @@ plt.ylabel('High Arousal Mean Firing Rate (Hz)')
 plt.savefig('high_vs_low_arousal.svg')
 plt.show()
 
+# Accumulate all PSTH data
+all_psth_low = []
+all_psth_high = []
 
+for result in results:
+    cluster_id = result['Cluster']
+    Y = spike_times_clusters[cluster_id]
+    
+    spike_data_all = extract_spike_data_for_trials(Y, stimulusDF)
 
+    if len(spike_data_all) == 0:
+        continue
+    
+    # Ensure the indices are valid
+    valid_inds_low = [i for i in inds_low if i < len(spike_data_all)]
+    valid_inds_high = [i for i in inds_high if i < len(spike_data_all)]
 
+    # Calculate PSTH for low and high pupil diameters
+    spike_data_low = spike_data_all[valid_inds_low]
+    spike_data_high = spike_data_all[valid_inds_high]
+    
+    mean_psth_low, _, _, _, _ = meanvar_PSTH(spike_data_low, count_window=20)
+    mean_psth_high, _, _, _, _ = meanvar_PSTH(spike_data_high, count_window=20)
+
+    mean_psth_low_normalized = mean_psth_low/np.max(mean_psth_low)
+    mean_psth_high_normalized = mean_psth_high/np.max(mean_psth_high)
+
+    all_psth_low.append(mean_psth_low_normalized)
+    all_psth_high.append(mean_psth_high_normalized)
+
+# Convert lists to arrays for easier averaging
+all_psth_low = np.array(all_psth_low)
+all_psth_high = np.array(all_psth_high)
+
+# Time vector should match the length of PSTH data
+time_vector = np.arange(-0.15, 0.15, bin_size)
+
+# Plot individual normalized PSTHs for each cluster and average normalized PSTH
+plt.figure(figsize=(12, 8))
+
+# Plot individual PSTHs for each cluster
+for i in range(all_psth_low.shape[0]):
+    plt.plot(time_vector, all_psth_low[i], color='blue', alpha=0.3)
+    plt.plot(time_vector, all_psth_high[i], color='red', alpha=0.3)
+
+# Calculate the average normalized PSTH across all clusters
+average_norm_psth_low = np.mean(all_psth_low, axis=0)
+average_norm_psth_high = np.mean(all_psth_high, axis=0)
+
+# Plot the average normalized PSTH on top
+plt.plot(time_vector, average_norm_psth_low, color='blue', label='Low Arousal', linewidth=2)
+plt.plot(time_vector, average_norm_psth_high, color='red', label='High Arousal', linewidth=2)
+
+plt.title('Individual and Average PSTH for Low and High Arousal')
+plt.legend()
+plt.savefig('combined_normalized_psth.svg')
+plt.show()
 
 
 
