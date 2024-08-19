@@ -120,55 +120,56 @@ def process_dataset(spike_times_secpath, clusters_path, stimulus_DF_path, trial_
     for c in spike_times_clusters.keys():
         Y = spike_times_clusters[c]
         
-        # Calculate baseline spike rate
-        baseline_rate = calculate_baseline_rate(Y, baseline_pre_time)
+        #Calculate baseline spike rate
+        baseline_rate_count, evoked_rate_count = get_spike_counts(Y, stimulusDF["stimstart"].values, pre_time=0.15, post_time=0.15)
+        baseline_rate_mean= np.mean(baseline_rate_count)/0.15
+        evoked_rate_mean = np.mean(evoked_rate_count)/0.15
+
+        if evoked_rate_mean >=  baseline_rate_mean + 10:
+            
+            
+            # Extract spike data for all trials
+            spike_data_all = extract_spike_data_for_trials(Y, stimulusDF)
+            if len(spike_data_all) == 0:
+                continue
+
+            # Ensure the indices are valid
+            valid_inds_low = [i for i in inds_low if i < len(spike_data_all)]
+            valid_inds_high = [i for i in inds_high if i < len(spike_data_all)]
+
+            # Calculate PSTH for low and high pupil diameters
+            spike_data_low = spike_data_all[valid_inds_low]
+            spike_data_high = spike_data_all[valid_inds_high]
+            
+            mean_psth_low, _, _, _, _ = meanvar_PSTH(spike_data_low, count_window=20)
+            mean_psth_high, _, _, _, _ = meanvar_PSTH(spike_data_high, count_window=20)
+            
+            # Normalize the PSTHs by their respective maxima for each cluster
+            max_low = np.max(mean_psth_low)
+            max_high = np.max(mean_psth_high)
+
+                #max low or max high which one is high
+            
+            max_low_high = np.max([max_low, max_high])
+
         
-        # Skip clusters with baseline spike rate less than 1 Hz
-        if baseline_rate < 1:
-            continue
-        
-        # Extract spike data for all trials
-        spike_data_all = extract_spike_data_for_trials(Y, stimulusDF)
-        if len(spike_data_all) == 0:
-            continue
+            if max_low_high > 0:
+                mean_psth_low_normalized = mean_psth_low / max_low_high
+                all_psth_low.append(mean_psth_low_normalized)
+            else:
+                print(f"Cluster {c}: max_low is 0, skipping normalization for low arousal.")
 
-        # Ensure the indices are valid
-        valid_inds_low = [i for i in inds_low if i < len(spike_data_all)]
-        valid_inds_high = [i for i in inds_high if i < len(spike_data_all)]
+            if max_low_high > 0:
+                mean_psth_high_normalized = mean_psth_high / max_low_high
+                all_psth_high.append(mean_psth_high_normalized)
+            else:
+                print(f"Cluster {c}: max_high is 0, skipping normalization for high arousal.")
 
-        # Calculate PSTH for low and high pupil diameters
-        spike_data_low = spike_data_all[valid_inds_low]
-        spike_data_high = spike_data_all[valid_inds_high]
-        
-        mean_psth_low, _, _, _, _ = meanvar_PSTH(spike_data_low, count_window=20)
-        mean_psth_high, _, _, _, _ = meanvar_PSTH(spike_data_high, count_window=20)
-        
-        # Normalize the PSTHs by their respective maxima for each cluster
-        max_low = np.max(mean_psth_low)
-        max_high = np.max(mean_psth_high)
+        # Convert lists to arrays for easier averaging
+        all_psth_low = np.array(all_psth_low)
+        all_psth_high = np.array(all_psth_high)
 
-       #max low or max high which one is high
-         
-        max_low_high = np.max([max_low, max_high])
-
-     
-        if max_low_high > 0:
-            mean_psth_low_normalized = mean_psth_low / max_low_high
-            all_psth_low.append(mean_psth_low_normalized)
-        else:
-            print(f"Cluster {c}: max_low is 0, skipping normalization for low arousal.")
-
-        if max_low_high > 0:
-            mean_psth_high_normalized = mean_psth_high / max_low_high
-            all_psth_high.append(mean_psth_high_normalized)
-        else:
-            print(f"Cluster {c}: max_high is 0, skipping normalization for high arousal.")
-
-    # Convert lists to arrays for easier averaging
-    all_psth_low = np.array(all_psth_low)
-    all_psth_high = np.array(all_psth_high)
-
-    return all_psth_low, all_psth_high
+        return all_psth_low, all_psth_high
 
 # Load datasets
 datasets = []
@@ -211,11 +212,11 @@ plt.figure(figsize=(12, 8))
 
 # Plot the average normalized PSTH with error shading
 plt.plot(time_vector, average_norm_psth_low, color='blue', label='Low Arousal', linewidth=3)
-plt.fill_between(time_vector, average_norm_psth_low - stderr_norm_psth_low, average_norm_psth_low + stderr_norm_psth_low, color='blue', alpha=0.3)
+plt.fill_between(time_vector, average_norm_psth_low - stderr_norm_psth_low, average_norm_psth_low  + stderr_norm_psth_low , color='blue', alpha=0.3)
 
 if len(average_norm_psth_high) > 0:
     plt.plot(time_vector, average_norm_psth_high, color='red', label='High Arousal', linewidth=3)
-    plt.fill_between(time_vector, average_norm_psth_high - stderr_norm_psth_high, average_norm_psth_high + stderr_norm_psth_high, color='red', alpha=0.3)
+    plt.fill_between(time_vector, average_norm_psth_high  - stderr_norm_psth_high , average_norm_psth_high + stderr_norm_psth_high , color='red', alpha=0.3)
 
 # Enhance the title, labels, and add grid
 plt.title('Average PSTH for Low and High Arousal Across All Datasets', fontsize=16)
@@ -225,6 +226,22 @@ plt.grid(True, linestyle='--', alpha=0.6)
 plt.legend(fontsize=12)
 plt.savefig('average_psth_all_datasets_with_error.svg')
 plt.show()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

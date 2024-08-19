@@ -10,7 +10,7 @@ CatGT_dir  = 'C:/Users/mmustans/Documents/GitHub/CatGTWinApp/CatGT-win/'
 TPrime_dir = 'C:/Users/mmustans/Documents/GitHub/TPrimeWinApp/TPrime-win/'
 
 # catGT parameters
-DIR = ' -dir=D:/Data/MM008_Wolfjaw/Electrophysiology/2024-06-18'
+DIR = ' -dir=D:/Data/MM001_Sansa/Electrophysiology/2024-04-18'
 RUN = ' -run=BSD'
 prs = ' -g=0 -t=0 -ap -ni -prb_fld -prb=0'
 xa3 = ' -xa=0,0,3,2.5,1,0'  # trial start
@@ -19,10 +19,12 @@ xa = ' -xa=0,0,5,2.5,1,0'  # stim start
 xia3 = ' -xia=0,0,5,2.5,3,0'  # stim stop
 
 
-
 # run CatGT
 os.chdir('C:/Users/mmustans/Documents/GitHub/CatGTWinApp/CatGT-win/')
 print('CatGT is running, please wait for the process to finish')
+
+os.chdir('C:/Users/mmustans/Documents/GitHub/TPrimeWinApp/TPrime-win/')
+
 subprocess.run('CatGT' + DIR + RUN + prs + xia + xa +xa3+xia3, shell=True, capture_output=True)
 
 # convert spike times to seconds
