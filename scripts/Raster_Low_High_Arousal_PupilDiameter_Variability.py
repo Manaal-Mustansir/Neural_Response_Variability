@@ -28,12 +28,16 @@ pupilFullPath = utils.getFilePath(windowTitle="Pupil diameter data", filetypes=[
 
 spike_times_clusters = utils.get_spike_times(clusters, spike_times_sec)
 
+count_window = 20
+
 def plot_raster(Y, ax, stimulusDF, title):
-    for trial, row in stimulusDF.iterrows():
+    tr = 0
+    for _, row in stimulusDF.iterrows():
+        tr = tr + 1
         start_time = row['stimstart']
         stop_time = row['stimstop']
         spikes_in_trial = Y[(Y >= start_time - 0.15) & (Y <= stop_time)]
-        ax.eventplot(spikes_in_trial - start_time, color='black', linewidths=0.5, lineoffsets=trial + 1)
+        ax.eventplot(spikes_in_trial - start_time, color='black', linewidths=0.5, lineoffsets=tr)
     ax.set_title(title)
     ax.set_xlabel('Time (s)')
     ax.set_ylabel('Trial')
@@ -66,8 +70,11 @@ def extract_spike_data_for_trials(Y, stimulusDF, pre_time=0.15, post_time=0.15, 
     return trial_spike_data
 
 def meanvar_PSTH(data: np.ndarray, count_window: int = 100, style: str = 'same', 
-                 return_bootdstrs: bool = False, nboots: int = 1000) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    data = data > 0
+                 return_bootdstrs: bool = False, nboots: int = 1000, binarize: bool = False) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    # Binarize the data if binarize=True
+    if binarize:
+        data = data > 0
+    
     if style == 'valid':
         mean_timevector = np.nan * np.ones((data.shape[1] - count_window + 1))
         vari_timevector = np.nan * np.ones((data.shape[1] - count_window + 1))
@@ -157,10 +164,7 @@ for c in spike_times_clusters.keys():
         plot_raster(Y, axs[1], stimulusDF.iloc[inds_high], title=f'Cluster {c} - High Pupil Diameter')
         
         # Extract spike data for all trials
-        spike_data_all = extract_spike_data_for_trials(Y, stimulusDF)
-
-        if len(spike_data_all) == 0:
-            continue
+        spike_data_all = extract_spike_data_for_trials(Y, stimulusDF)      
 
         # Ensure the indices 
         valid_inds_low = [i for i in inds_low if i < len(spike_data_all)]
@@ -170,8 +174,8 @@ for c in spike_times_clusters.keys():
         spike_data_low = spike_data_all[valid_inds_low]
         spike_data_high = spike_data_all[valid_inds_high]
         
-        mean_psth_low, var_psth_low, _, _, _ = meanvar_PSTH(spike_data_low, count_window=20)
-        mean_psth_high, var_psth_high, _, _, _ = meanvar_PSTH(spike_data_high, count_window=20)
+        mean_psth_low, var_psth_low, _, _, _ = meanvar_PSTH(spike_data_low, count_window)
+        mean_psth_high, var_psth_high, _, _, _ = meanvar_PSTH(spike_data_high, count_window)
 
         # Calculate Fano factor
         fano_factor_low = var_psth_low / mean_psth_low
@@ -192,14 +196,15 @@ for c in spike_times_clusters.keys():
         stderr_psth_low = np.sqrt(var_psth_low) / np.sqrt(len(valid_inds_low))
         stderr_psth_high = np.sqrt(var_psth_high) / np.sqrt(len(valid_inds_high))
 
+        normalizing_factor = count_window/1000.0
         # Plot PSTH and Fano factor for low and high pupil diameters
-        axs[2].plot(time_vector, mean_psth_low, color='black', linestyle='--', label='Low Pupil Diameter')
-        axs[2].plot(time_vector, mean_psth_high, color='red', label='High Pupil Diameter')
+        axs[2].plot(time_vector, mean_psth_low/normalizing_factor, color='black', linestyle='--', label='Low Pupil Diameter')
+        axs[2].plot(time_vector, mean_psth_high/normalizing_factor, color='red', label='High Pupil Diameter')
 
         # Add fill_between for PSTH low
-        axs[2].fill_between(time_vector, (mean_psth_low - stderr_psth_low), (mean_psth_low + stderr_psth_low), color='grey', alpha=0.3)
+        axs[2].fill_between(time_vector, np.array(mean_psth_low - stderr_psth_low)/normalizing_factor, np.array(mean_psth_low + stderr_psth_low)/normalizing_factor, color='grey', alpha=0.3)
         # Add fill_between for PSTH high
-        axs[2].fill_between(time_vector, (mean_psth_high - stderr_psth_high), (mean_psth_high + stderr_psth_high), color='lightcoral', alpha=0.3)
+        axs[2].fill_between(time_vector, np.array(mean_psth_high - stderr_psth_high)/normalizing_factor, np.array(mean_psth_high + stderr_psth_high)/normalizing_factor, color='lightcoral', alpha=0.3)
 
         axs[2].set_xlim(-0.15, 0.15)  
         axs[2].set_title(f'PSTH for Cluster {c}')
@@ -272,13 +277,21 @@ results_df.to_csv('classification_results_2024-04-18.csv', index=False)
 mean_low_population = np.mean([res['Evoked Low Firing Rate'] for res in results])
 mean_high_population = np.mean([res['Evoked High Firing Rate'] for res in results])
 
+
+# Standard errors
+stderr_low_population = np.std([res['Evoked Low Firing Rate'] for res in results]) / np.sqrt(len(results))
+stderr_high_population = np.std([res['Evoked High Firing Rate'] for res in results]) / np.sqrt(len(results))
+
 plt.figure(figsize=(10, 6))
-plt.bar(['Low Arousal', 'High Arousal'], [mean_low_population, mean_high_population], color=['blue', 'red'])
+plt.bar(['Low Arousal', 'High Arousal'], [mean_low_population, mean_high_population], 
+        yerr=[stderr_low_population, stderr_high_population], color=['blue', 'red'], capsize=5)
 plt.title('Population Effect')
 plt.xlabel('Arousal State')
 plt.ylabel('Mean Firing Rate (Hz)')
 plt.savefig('population_effect.svg')
 plt.show()
+
+
 
 # Scatter plot for high vs low population with different colors
 plt.figure(figsize=(10, 6))
