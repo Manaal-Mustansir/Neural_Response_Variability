@@ -220,10 +220,14 @@ plt.plot(time_vector, population_psth_high, color='red', label='High Arousal')
 plt.fill_between(time_vector, population_psth_high - stderr_psth_high, population_psth_high + stderr_psth_high, color='red', alpha=0.3)
 
 plt.xlim(-pre_time, post_time)
-plt.title('Population PSTH with Standard Error')
+plt.title('Low and High Pupil Diameter Effect')
 plt.xlabel('Time (s)')
-plt.ylabel('Spike Rate (Hz)')
+plt.ylabel('Firing Rate (Hz)')
 plt.legend()
+ax = plt.gca()
+for spine in ax.spines.values():
+    spine.set_edgecolor('black')
+    spine.set_linewidth(2)  # Make bold
 psth_filename = 'population_psth_with_error.svg'
 psth_fullpath = os.path.join(results_dir, psth_filename)
 plt.savefig(psth_fullpath)
@@ -247,27 +251,35 @@ stderr_high_population = np.std([res['Evoked High Firing Rate'] for res in all_r
 
 plt.figure(figsize=(10, 6))
 
-# Use matplotlib text properties instead of LaTeX formatting
-labels = ['Low Arousal', 'High Arousal']
-colors = ['black', 'red']
+#  matplotlib text 
+labels = ['Low', 'High']
+colors = ['grey', 'red']
 bars = plt.bar(labels, 
                [mean_low_population, mean_high_population], 
                yerr=[stderr_low_population, stderr_high_population], 
                color=colors,  
-               capsize=5)
+               capsize=5,
+               edgecolor='black',
+               linewidth=3)
 
 # Add markers on top of the bars
 for bar, color in zip(bars, colors):
     plt.scatter(bar.get_x() + bar.get_width() / 2, bar.get_height(), 
-                color=color, marker='o', s=100, zorder=3)  # Adjust 's' for marker size
+                color=color, zorder=3)  # Adjust 's' for marker size
 
 plt.ylim(0, max(mean_low_population, mean_high_population) + 10)
 plt.text(0.5, max(mean_low_population, mean_high_population) + 6, f'p = {p_val_str}', ha='center')
 plt.plot([0, 1], [max(mean_low_population, mean_high_population) + 5] * 2, color='black')
 
-plt.title('Low and High Pupil Diameter Effect')
-plt.xlabel('Arousal State')
+plt.xlabel('Pupil Diameter')
 plt.ylabel('Mean Firing Rate (Hz)')
+ax = plt.gca()
+ax.spines['top'].set_visible(False)   # Remove top spine
+ax.spines['right'].set_visible(False) # Remove right spine
+ax.spines['bottom'].set_edgecolor('black')
+ax.spines['bottom'].set_linewidth(2)
+ax.spines['left'].set_edgecolor('black')
+ax.spines['left'].set_linewidth(2)
 barplot_filename = 'population_effect_combined.svg'
 barplot_fullpath = os.path.join(results_dir, barplot_filename)
 plt.savefig(barplot_fullpath)
@@ -278,25 +290,34 @@ plt.figure(figsize=(6, 6))
 low_population_means = [res['Evoked Low Firing Rate'] for res in all_results]
 high_population_means = [res['Evoked High Firing Rate'] for res in all_results]
 
-# Determine the limit based on the maximum value across both axes
-max_limit = max(max(low_population_means), max(high_population_means)) + 10 
+# Determine the limit based on the maximum value across both axes, but allowing a margin to include all points
+max_limit = max(max(low_population_means), max(high_population_means)) + 20  
+plt.scatter(low_population_means, high_population_means, color='black', s=8)  # Set 's' marker size
+plt.plot([1, max_limit], [1, max_limit], 'r-', linewidth=2)  #  middle diagonal
 
-# Scatter plot with low arousal in black and high arousal in red
-plt.scatter(low_population_means, high_population_means, color='red', label='High Arousal')
-plt.scatter(low_population_means, low_population_means, color='black', label='Low Arousal')
-plt.plot([0, max_limit], [0, max_limit], 'k--')
+# Set the plot box (spine) color 
+ax = plt.gca()
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+ax.spines['bottom'].set_color('black')
+ax.spines['bottom'].set_linewidth(2)
+ax.spines['left'].set_color('black')
+ax.spines['left'].set_linewidth(2)
+plt.xscale('log')
+plt.yscale('log')
 
-plt.xlim(0, max_limit)
-plt.ylim(0, max_limit)
+plt.xlim(1, max_limit)
+plt.ylim(1, max_limit)
 plt.gca().set_aspect('equal', adjustable='box')
-plt.title('Low and high Pupil Diameter Effect')
-plt.xlabel('Mean Firing Rate: Low Arousal (Hz)')
-plt.ylabel('Mean Firing Rate: High Arousal (Hz)')
+#plt.title('Low and High Pupil Diameter Effect')
+plt.xlabel('Mean Firing Rate (Hz): Low Pupil Diameter')
+plt.ylabel('Mean Firing Rate (Hz): High Pupil Diameter')
 plt.legend(loc='upper left')
 scatterplot_filename = 'high_vs_low_arousal_scatter_combined.svg'
 scatterplot_fullpath = os.path.join(results_dir, scatterplot_filename)
 plt.savefig(scatterplot_fullpath)
 plt.show()
+
 
 # Swarm plot across all datasets
 plt.figure(figsize=(10, 6))

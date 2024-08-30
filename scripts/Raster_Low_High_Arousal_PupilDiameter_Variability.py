@@ -217,9 +217,15 @@ for c in spike_times_clusters.keys():
         axs[2].set_xlim(-pre_time, post_time)  
         axs[2].set_title(f'PSTH for Cluster {c}')
         axs[2].set_xlabel('Time (s)')
-        axs[2].set_ylabel('Spike Rate (Hz)')
+        axs[2].set_ylabel('Firing Rate (Hz)')
         axs[2].legend()
-
+        for ax in axs:
+         ax.spines['left'].set_linewidth(2)    # Make left spine bold
+         ax.spines['bottom'].set_linewidth(2)  # Make bottom spine bold
+         ax.spines['top'].set_visible(False)   # Remove top spine
+         ax.spines['right'].set_visible(False) # Remove right spine
+         ax.tick_params(width=2)               # Make tick marks bold
+        
         plt.tight_layout()
         svg_filename = f'cluster_{c}.svg'
         svg_fullpath = os.path.join(results_dir, svg_filename)
@@ -290,12 +296,14 @@ plt.figure(figsize=(10, 6))
 
 # Use matplotlib text properties instead of LaTeX formatting
 labels = ['Low Arousal', 'High Arousal']
-colors = ['black', 'red']
+colors = ['grey', 'red']
 bars = plt.bar(labels, 
                [mean_low_population, mean_high_population], 
                yerr=[stderr_low_population, stderr_high_population], 
                color=colors,  
-               capsize=5)
+               capsize=5,
+               edgecolor='black',
+               linewidth=3)
 
 # Draw the p-value line between bars
 plt.text(0.5, max(mean_low_population, mean_high_population) + 2, f'p = {p_val_str}', ha='center')
@@ -305,9 +313,16 @@ plt.plot([0, 1], [max(mean_low_population, mean_high_population) + 1] * 2, color
 bars[0].set_label(r'Low Arousal')
 bars[1].set_label(r'High Arousal')
 
-plt.title('Pupil Diameter Effect')
+#plt.title('Pupil Diameter Effect')
 penetration_patch = mpatches.Patch(color='none', label='Penetration: 04-17-2024')
-plt.legend(handles=[penetration_patch], loc='upper right', fontsize=12, frameon=False)
+plt.legend(handles=[penetration_patch], loc='upper left', fontsize=12, frameon=False)
+ax = plt.gca()
+ax.spines['top'].set_visible(False)   # Remove top spine
+ax.spines['right'].set_visible(False) # Remove right spine
+ax.spines['bottom'].set_edgecolor('black')
+ax.spines['bottom'].set_linewidth(2)
+ax.spines['left'].set_edgecolor('black')
+ax.spines['left'].set_linewidth(2)
 barplot_filename = 'population_effect.svg'
 barplot_fullpath = os.path.join(results_dir, barplot_filename)
 plt.savefig(barplot_fullpath)
@@ -321,16 +336,23 @@ high_population_means = [res['Evoked High Firing Rate'] for res in results]
 
 # Determine the limit based on the maximum value across both axes
 max_limit = max(max(low_population_means), max(high_population_means)) + 10 
+plt.scatter(low_population_means, high_population_means, color='black', s=10)
+plt.plot([1, max_limit], [1, max_limit], 'r-' ,  linewidth=2)  #
 
-# Scatter plot with low arousal in black and high arousal in red
-plt.scatter(low_population_means, high_population_means, color='red', label='High Arousal')
-plt.scatter(low_population_means, low_population_means, color='black', label='Low Arousal')
-plt.plot([0, max_limit], [0, max_limit], 'k--')
+plt.xscale('log')
+plt.yscale('log')
 
-plt.xlim(0, max_limit)
-plt.ylim(0, max_limit)
+plt.xlim(1, max_limit)
+plt.ylim(1, max_limit)
 plt.gca().set_aspect('equal', adjustable='box')
-plt.title('Pupil Diameter Effect')
+ax = plt.gca()
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+ax.spines['bottom'].set_color('black')
+ax.spines['bottom'].set_linewidth(2)
+ax.spines['left'].set_color('black')
+ax.spines['left'].set_linewidth(2)
+#plt.title('Pupil Diameter Effect')
 plt.xlabel('Mean Firing Rate:Low')
 plt.ylabel('Mean Firing Rate:High')
 n_value_patch = mpatches.Patch(color='none', label=f'n = {n_neurons}')

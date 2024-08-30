@@ -171,12 +171,19 @@ plt.plot(time_vector, avg_psth_high, color='red', label='High Arousal')
 plt.fill_between(time_vector, avg_psth_low - stderr_psth_low, avg_psth_low + stderr_psth_low, color='grey', alpha=0.3)
 plt.fill_between(time_vector, avg_psth_high - stderr_psth_high, avg_psth_high + stderr_psth_high, color='lightcoral', alpha=0.3)
 
-plt.title('Average PSTH Showing Low and High Arousal')
+#plt.title('Low and High Arousal Pupil Diameter Effect')
 plt.xlabel('Time (s)')
-plt.ylabel('Spike Rate (Hz)')
+plt.ylabel('Firing Rate (Hz)')
 plt.ylim(0, 1)  
 plt.xlim(-0.15, 0.15)  
 plt.legend()
+ax = plt.gca()
+ax.spines['top'].set_visible(False)   # Remove top spine
+ax.spines['right'].set_visible(False) # Remove right spine
+ax.spines['bottom'].set_edgecolor('black')
+ax.spines['bottom'].set_linewidth(2)
+ax.spines['left'].set_edgecolor('black')
+ax.spines['left'].set_linewidth(2)
 avg_psth_filename = 'avg_psth_low_high_arousal.svg'
 avg_psth_fullpath = os.path.join(results_dir, avg_psth_filename)
 plt.savefig(avg_psth_fullpath)
