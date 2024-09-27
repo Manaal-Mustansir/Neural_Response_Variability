@@ -1,14 +1,15 @@
-# this script needs to be run with pypill environment activated
+
+# This script needs to be run with the pypill environment activated
 from lib import readSGLX
 import numpy as np
 import matplotlib.pyplot as plt
-from utils import utils as ut 
+from utils import utils as ut # type: ignore
 from scipy.signal import detrend, butter, filtfilt
 from scipy.fft import fft, fftfreq
 import os
-
+s
 tStart = 0        
-tEnd = 427.974
+tEnd = 60.0
 chanList = [2]   
 thr = 12
 record_start = 0
@@ -34,45 +35,24 @@ def interpolate_nans(pupil_diameters):
     pupil_diameters[nan_indices] = np.interp(nan_indices, non_nan_indices, pupil_diameters[non_nan_indices])
     return pupil_diameters
 
-def interactive_plot(pupil_diameters):
-    from matplotlib.widgets import SpanSelector, Button
-    
-    def onselect(xmin, xmax):
-        imin, imax = int(xmin), int(xmax)
-        pupil_diameters[imin:imax] = np.nan
-
-    def on_button_press(event):
-        plt.close(fig)
-    
-    fig, ax = plt.subplots()
-    ax.plot(pupil_diameters)
-    span = SpanSelector(ax, onselect, 'horizontal', useblit=True,
-                        props=dict(alpha=0.5, facecolor='red'))
-    button_ax = plt.axes([0.8, 0.025, 0.1, 0.04])
-    button = Button(button_ax, 'Done', color='lightgoldenrodyellow', hovercolor='0.975')
-    button.on_clicked(on_button_press)
-    plt.show()
-
-    return pupil_diameters
-
 def plot_fft_limited(data, sample_rate, title, max_freq=100):
-    data = detrend(data)  # 
+    data = detrend(data)  # Remove any linear trend
     n = len(data)
     freqs = fftfreq(n, d=1/sample_rate)
     fft_data = fft(data)
     magnitude = np.abs(fft_data)
     
-    # 
+    # Select only the frequency range up to max_freq
     mask = freqs[:n // 2] <= max_freq
     
     plt.figure()
     plt.plot(freqs[:n // 2][mask], magnitude[:n // 2][mask])
     plt.title(f'Fourier Transform of {title}')
-    plt.xlim(0, max_freq) 
+    plt.xlim(0, max_freq)  # Ensure x-axis is limited to 0-50 Hz
     plt.show()
 
 def low_pass_filter(data, sample_rate, cutoff=5.0, order=4):
-    # Detrend 
+    # Detrend the data before filtering
     data = detrend(data)  
     
     # Calculate the Nyquist frequency
@@ -81,11 +61,14 @@ def low_pass_filter(data, sample_rate, cutoff=5.0, order=4):
     # Normalize the cutoff frequency
     normal_cutoff = cutoff / nyquist
     
-    #Butterworth low-pass filter
+    # Butterworth low-pass filter
     b, a = butter(order, normal_cutoff, btype='low', analog=False)
     filtered_data = filtfilt(b, a, data)
     
     return filtered_data
+
+def normalize_data(data):
+    return (data - np.min(data)) / (np.max(data) - np.min(data))
 
 # Load the data
 binFullPath = ut.getFilePath(windowTitle="Binary nidq file",filetypes=[("NIdq binary","*.bin")]) # type: ignore
@@ -101,26 +84,52 @@ pupilDiameter = 1e3 * readSGLX.GainCorrectNI(selectData, chanList, meta)
 
 pupilDiameter = pupilDiameter[0, record_start:record_stop]
 
-blink_inds = detect_blinks(pupilDiameter, thr)
-pupilDiameter = replace_blinks_with_nan(pupilDiameter, blink_inds, sRate)
-pupilDiameter = interpolate_nans(pupilDiameter)
-pupilDiameter = interactive_plot(pupilDiameter)
-pupilDiameter = interpolate_nans(pupilDiameter)
-
-# Plot the FFT 
-plot_fft_limited(pupilDiameter, sRate, 'Raw Pupil Diameter', max_freq=50)
-
-#low-pass filter with detrending
-cutoff_frequency = 5.0  
-pupilDiameter_filtered = low_pass_filter(pupilDiameter, sRate, cutoff=cutoff_frequency)
-
-# Plot the filtered data
-plt.plot(pupilDiameter_filtered)
-plt.title('Pupil Diameter After Low-Pass Filtering')
+# Plot the raw data before any processing
+plt.figure(figsize=(10, 4))
+plt.plot(pupilDiameter)
+plt.title('Raw Pupil Diameter Data')
 plt.xlabel('Time (samples)')
 plt.show()
 
-# Plot the FFT 
+# Detect and remove blinks
+blink_inds = detect_blinks(pupilDiameter, thr)
+pupilDiameter = replace_blinks_with_nan(pupilDiameter, blink_inds, sRate)
+pupilDiameter = interpolate_nans(pupilDiameter)
+
+# Start the data at 90k samples but keep the y-axis scale
+pupilDiameter = pupilDiameter[90000:]
+
+# Plot the raw data starting from 90k samples with unchanged y-axis
+plt.figure(figsize=(10, 4))
+plt.plot(pupilDiameter)
+plt.title('Raw Pupil Diameter Data Starting from 90k Samples')
+plt.xlabel('Time (samples)')  # Keep the y-axis limits as in the filtered plot
+plt.show()
+
+# Plot the FFT of the raw data after blink removal
+plot_fft_limited(pupilDiameter, sRate, 'Raw Pupil Diameter After Blink Removal', max_freq=50)
+
+# Apply low-pass filter with detrending
+cutoff_frequency = 5.0  
+pupilDiameter_filtered = low_pass_filter(pupilDiameter, sRate, cutoff=cutoff_frequency)
+
+# Plot the filtered data starting from 90k samples with unchanged y-axis
+plt.plot(pupilDiameter_filtered)
+plt.title(' Low-Pass Filtering')
+plt.xlabel('Time (samples)')
+plt.ylim(-400, 1200)  # Keep the y-axis limits as in the provided plot
+plt.show()
+
+# Normalize the detrended and filtered data
+pupilDiameter_normalized = normalize_data(pupilDiameter_filtered)
+
+# Plot the detrended and normalized data
+plt.plot(pupilDiameter_normalized)
+plt.xlabel('Time (samples)')
+plt.ylabel('Pupil Diameter')
+plt.show()
+
+# Plot the FFT of the filtered data
 plot_fft_limited(pupilDiameter_filtered, sRate, 'Filtered Pupil Diameter', max_freq=50)
 
 # Save the processed data

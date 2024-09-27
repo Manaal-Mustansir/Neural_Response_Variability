@@ -10,7 +10,7 @@ CatGT_dir  = 'C:/Users/mmustans/Documents/GitHub/CatGTWinApp/CatGT-win/'
 TPrime_dir = 'C:/Users/mmustans/Documents/GitHub/TPrimeWinApp/TPrime-win/'
 
 # catGT parameters
-DIR = ' -dir=D:/Data/MM001_Sansa/Electrophysiology/2024-04-18'
+DIR = ' -dir=D:/Data/MM001_Sansa/Electrophysiology/2024-05-31'
 RUN = ' -run=BSD'
 prs = ' -g=0 -t=0 -ap -ni -prb_fld -prb=0'
 xa3 = ' -xa=0,0,3,2.5,1,0'  # trial start
@@ -25,7 +25,10 @@ print('CatGT is running, please wait for the process to finish')
 
 os.chdir('C:/Users/mmustans/Documents/GitHub/TPrimeWinApp/TPrime-win/')
 
-subprocess.run('CatGT' + DIR + RUN + prs + xia + xa +xa3+xia3, shell=True, capture_output=True)
+CatGT_executable = os.path.join(CatGT_dir, 'CatGT.exe')
+command = f'"{CatGT_executable}"{DIR}{RUN}{prs}{xia}{xa}{xa3}{xia3}'
+result = subprocess.run(command, shell=True, capture_output=True, text=True)
+
 
 # convert spike times to seconds
 binFullPath = utils.getFilePath(windowTitle="Select binary ap file", filetypes=[("sGLX binary", "*.bin")])
