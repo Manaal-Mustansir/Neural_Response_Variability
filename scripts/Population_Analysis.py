@@ -8,6 +8,7 @@ from utils import utils
 from lib import readSGLX
 import os
 import seaborn as sns
+from scipy import stats
 
 # Results directory
 results_dir = "C:/Users/mmustans/Documents/Projects/Neural_Response_Variability/results"
@@ -22,14 +23,12 @@ def calculate_median_pupil_diameter(pupil_diameter, stimulusDF, baseline_time, s
         medians.append(median_diameter)
     return np.array(medians)
 
-
 def linear_stimuli(expt_info):
     stims = np.array([])
     for i in range(expt_info.trial_records.shape[0]):
         stims = np.hstack((stims, expt_info.trial_records[i].trImage))
     return stims
 
-# Function to calculate spike counts
 def get_spike_counts(spike_times, stim_times, pre_time, post_time, initial_time=0.035):
     baseline_counts = []
     evoked_counts = []
@@ -43,12 +42,10 @@ def get_spike_counts(spike_times, stim_times, pre_time, post_time, initial_time=
     
     return np.array(baseline_counts), np.array(evoked_counts)
 
-
 all_results = []
-
 threshold_value = 5
 
-# Loop to load
+# Loop to load and process six datasets
 for dataset_num in range(1, 7):
     print(f"Processing dataset {dataset_num}...")
 
@@ -97,7 +94,7 @@ for dataset_num in range(1, 7):
     post_time = 0.15
     initial_time = 0.035
 
-    # 
+    # Collect results for each cluster
     results = []
 
     for c in spike_times_clusters.keys():
@@ -122,6 +119,10 @@ for dataset_num in range(1, 7):
         baseline_low_firing_rate = np.mean(baseline_counts_low) / pre_time
         evoked_high_firing_rate = np.mean(evoked_counts_high) / post_time
         evoked_low_firing_rate = np.mean(evoked_counts_low) / post_time
+
+        # Calculate Fano Factors
+        FF_low = np.var(evoked_counts_low) / np.mean(evoked_counts_low) if np.mean(evoked_counts_low) > 0 else np.nan
+        FF_high = np.var(evoked_counts_high) / np.mean(evoked_counts_high) if np.mean(evoked_counts_high) > 0 else np.nan
 
         # Apply the threshold condition
         if (evoked_high_firing_rate >= baseline_high_firing_rate + threshold_value) and (evoked_low_firing_rate >= baseline_low_firing_rate + threshold_value):
@@ -151,7 +152,9 @@ for dataset_num in range(1, 7):
                 'Baseline High Firing Rate': baseline_high_firing_rate,
                 'Baseline Low Firing Rate': baseline_low_firing_rate,
                 'Evoked High Firing Rate': evoked_high_firing_rate,
-                'Evoked Low Firing Rate': evoked_low_firing_rate
+                'Evoked Low Firing Rate': evoked_low_firing_rate,
+                'Fano Factor Low': FF_low,
+                'Fano Factor High': FF_high
             })
 
     # Append results for the current dataset to the overall results
@@ -159,24 +162,56 @@ for dataset_num in range(1, 7):
 
 # Convert all results to a DataFrame
 all_results_df = pd.DataFrame(all_results)
-csv_filename = 'stimulus_1_classification_results.csv'
+csv_filename = 'stimulus_1_classification_results_with_fano_factor.csv'
 csv_fullpath = os.path.join(results_dir, csv_filename)
 all_results_df.to_csv(csv_fullpath, index=False)
 
-# Visualization: Bar Plot for Stimulus 1 Population Effect
-plt.figure(figsize=(14, 8))
+# Scatter Plot: Fano Factor High vs Low
+plt.figure(figsize=(8, 6))
+plt.scatter(all_results_df['Fano Factor Low'], all_results_df['Fano Factor High'], color='blue', s=50)
+plt.plot([0.1, max(all_results_df['Fano Factor Low'])],
+         [0.1, max(all_results_df['Fano Factor Low'])], 'k--')
+plt.xscale('log')
+plt.yscale('log')
+plt.xlabel('Fano Factor Low', fontsize=14)
+plt.ylabel('Fano Factor High', fontsize=14)
+plt.title('Scatter Plot: Fano Factor (High vs Low)', fontsize=16)
 
+# Set axis limits to start from 10^-1 (0.1)
+plt.xlim(0.1, max(all_results_df['Fano Factor Low']))
+plt.ylim(0.1, max(all_results_df['Fano Factor High']))
+
+scatterplot_filename = 'fano_factor_scatter_plot.png'
+plt.savefig(os.path.join(results_dir, scatterplot_filename))
+plt.show()
+
+
+# Bar Plot: Mean Fano Factor High vs Low
+plt.figure(figsize=(8, 6))
+mean_ff_low = np.nanmean(all_results_df['Fano Factor Low'])
+mean_ff_high = np.nanmean(all_results_df['Fano Factor High'])
+sem_ff_low = stats.sem(all_results_df['Fano Factor Low'], nan_policy='omit')
+sem_ff_high = stats.sem(all_results_df['Fano Factor High'], nan_policy='omit')
+
+plt.bar(['Low', 'High'], [mean_ff_low, mean_ff_high], yerr=[sem_ff_low, sem_ff_high], color=['grey', 'red'], capsize=5)
+plt.xlabel('Condition', fontsize=14)
+plt.ylabel('Mean Fano Factor', fontsize=14)
+plt.title('Bar Plot: Mean Fano Factor (High vs Low)', fontsize=16)
+barplot_filename = 'mean_fano_factor_bar_plot.png'
+plt.savefig(os.path.join(results_dir, barplot_filename))
+plt.show()
+
+# Bar Plot: Evoked Firing Rates for Stimulus 1 (Original Plot)
+plt.figure(figsize=(8, 6))
 stim = 1  # Focus on Stimulus 1 only
 stim_results = all_results_df[all_results_df['Stimulus'] == stim]
 
-# Calculate mean and standard error
 mean_low = np.mean(stim_results['Evoked Low Firing Rate'])
 mean_high = np.mean(stim_results['Evoked High Firing Rate'])
 
 stderr_low = np.std(stim_results['Evoked Low Firing Rate']) / np.sqrt(len(stim_results))
 stderr_high = np.std(stim_results['Evoked High Firing Rate']) / np.sqrt(len(stim_results))
 
-# Plot bar graph
 plt.bar('Low', mean_low, yerr=stderr_low, color='grey', capsize=5, edgecolor='black', linewidth=3)
 plt.bar('High', mean_high, yerr=stderr_high, color='red', capsize=5, edgecolor='black', linewidth=3, alpha=0.7)
 
@@ -186,21 +221,17 @@ plt.ylim(0, max(mean_low, mean_high) + 10)
 plt.text(0.5, max(mean_low, mean_high) + 6, f'p = {p_val_evoked:.3e}', ha='center')
 
 plt.title('Evoked Firing Rates for Stimulus 1', fontsize=18, fontweight='bold')
-
-barplot_filename = 'stimulus_1_population_effect.svg'
-barplot_fullpath = os.path.join(results_dir, barplot_filename)
-plt.savefig(barplot_fullpath)
+firingrate_barplot_filename = 'evoked_firing_rates_bar_plot.png'
+plt.savefig(os.path.join(results_dir, firingrate_barplot_filename))
 plt.show()
 
-# Scatter Plot: High vs Low for Stimulus 1
-plt.figure(figsize=(8, 8))
-
+# Scatter Plot: High vs Low Firing Rates for Stimulus 1 (Original Plot)
+plt.figure(figsize=(8, 6))
 low_population_means = stim_results['Evoked Low Firing Rate']
 high_population_means = stim_results['Evoked High Firing Rate']
 
 plt.scatter(low_population_means, high_population_means, color='green', s=50, label='Stimulus 1')
 
-# Add a diagonal line for reference
 max_limit = max(stim_results['Evoked Low Firing Rate'].max(), stim_results['Evoked High Firing Rate'].max()) + 10 
 plt.plot([1, max_limit], [1, max_limit], 'k--', linewidth=2)
 
@@ -221,15 +252,9 @@ plt.xlabel('Mean Firing Rate: Low', fontweight='bold')
 plt.ylabel('Mean Firing Rate: High', fontweight='bold')
 plt.legend(loc='upper left', fontsize=12, frameon=False)
 
-scatterplot_filename = 'stimulus_1_high_vs_low_scatter_plot.svg'
-scatterplot_fullpath = os.path.join(results_dir, scatterplot_filename)
-plt.savefig(scatterplot_fullpath)
+firingrate_scatterplot_filename = 'firing_rate_scatter_plot.png'
+plt.savefig(os.path.join(results_dir, firingrate_scatterplot_filename))
 plt.show()
-
-# Save final results DataFrame to CSV for Stimulus 1
-csv_filename = 'stimulus_1_classification_results.csv'
-csv_fullpath = os.path.join(results_dir, csv_filename)
-stim_results.to_csv(csv_fullpath, index=False)
 
 
 
