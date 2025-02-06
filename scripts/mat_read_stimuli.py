@@ -69,13 +69,31 @@ else:
 
 
 
+import numpy as np
+import pandas as pd
+from scipy.io import loadmat
+import utils  # Assuming you have a utils module for file selection
 
+def load_metadata():
+    # Prompt user to select a metadata file
+    meta_file_path = utils.getFilePath(windowTitle="Select Metadata File", 
+                                       filetypes=[('Metadata files', '*.mat;*.npy;*.csv')])
 
+    # Check file type and load accordingly
+    if meta_file_path.endswith('.mat'):
+        meta_data = loadmat(meta_file_path, struct_as_record=False, squeeze_me=True)
+    elif meta_file_path.endswith('.npy'):
+        meta_data = np.load(meta_file_path, allow_pickle=True)
+    elif meta_file_path.endswith('.csv'):
+        meta_data = pd.read_csv(meta_file_path)
+    else:
+        raise ValueError("Unsupported file type. Please select a .mat, .npy, or .csv file.")
 
+    return meta_data
 
-
-
-
+# Example usage
+metadata = load_metadata()
+print(metadata)  # Display loaded metadata
 
 
 
