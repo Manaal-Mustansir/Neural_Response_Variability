@@ -1,4 +1,6 @@
 
+
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -20,7 +22,7 @@ FIRING_RATE_THRESHOLD = 5
 
 def mean_match(mean1, mean2, variance1, variance2, count_bins, nboots=100):
     import statsmodels.api as sm
-    # H
+    # 
     variance1 = variance1[~np.isnan(mean1)]
     mean1 = mean1[~np.isnan(mean1)]
     variance2 = variance2[~np.isnan(mean2)]
@@ -164,21 +166,28 @@ for dataset_num in range(1, 2):
     plt.xlabel('Fano Factor Low')
     plt.ylabel('Fano Factor High')
    
+    
+
+    # Matched Fano Factor bar plot
+    plt.subplot(1, 2, 2)
+    FF_low_mean_matched = np.mean(FF_low[np.isin(spkC_low, mean_low_matched)])
+    FF_high_mean_matched = np.mean(FF_high[np.isin(spkC_high, mean_high_matched)])
+    # Get matched indices
+    matched_indices_low = np.isin(spkC_low, mean_low_matched)
+    matched_indices_high = np.isin(spkC_high, mean_high_matched)
+
+   # Compute standard errors (SE) 
+    FF_low_matched_SE = np.std(FF_low[matched_indices_low], ddof=1) / np.sqrt(np.sum(matched_indices_low))
+    FF_high_matched_SE = np.std(FF_high[matched_indices_high], ddof=1) / np.sqrt(np.sum(matched_indices_high))
+
+    plt.bar([1, 2], [FF_low_mean_matched, FF_high_mean_matched], yerr=[FF_low_matched_SE, FF_high_matched_SE], color=['gray', 'red'], capsize=5)
+    plt.xticks([1, 2], ['Low', 'High'])
+    plt.ylabel('Fano Factor ')
+
     print("Original FF_low:", FF_low)
     print("Original FF_high:", FF_high)
     print("Matched FF_low:", FF_low_mean_matched)
     print("Matched FF_high:", FF_high_mean_matched)
-
-    # Matched Fano Factor bar plot
-    plt.subplot(1, 2, 2)
-    FF_low_mean_matched = np.mean(slope1)
-    FF_high_mean_matched = np.mean(slope2)
-    FF_low_matched_SE = np.std(slope1) / np.sqrt(len(slope1))
-    FF_high_matched_SE = np.std(slope2) / np.sqrt(len(slope2))
-    plt.bar([1, 2], [FF_low_mean_matched, FF_high_mean_matched], yerr=[FF_low_matched_SE, FF_high_matched_SE], color=['gray', 'red'], capsize=5)
-    plt.xticks([1, 2], ['Low', 'High'])
-    plt.ylabel('Fano Factor (Mean Matched)')
-
     # Save plots
     plt.tight_layout()
     plt.savefig(os.path.join(results_dir, 'mean_matched_fano_factors.svg'))
