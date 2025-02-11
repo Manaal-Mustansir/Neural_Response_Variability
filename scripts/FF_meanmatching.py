@@ -1,6 +1,3 @@
-
-
-
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -21,47 +18,45 @@ monkey_name = 'Sansa'
 FIRING_RATE_THRESHOLD = 5
 
 def mean_match(mean1, mean2, variance1, variance2, count_bins, nboots=100):
-    import statsmodels.api as sm
-    # 
-    variance1 = variance1[~np.isnan(mean1)]
-    mean1 = mean1[~np.isnan(mean1)]
-    variance2 = variance2[~np.isnan(mean2)]
-    mean2 = mean2[~np.isnan(mean2)]
-    
+
+    # Remove NaNs
+    valid_mask1, valid_mask2 = ~np.isnan(mean1), ~np.isnan(mean2)
+    mean1, variance1 = mean1[valid_mask1], variance1[valid_mask1]
+    mean2, variance2 = mean2[valid_mask2], variance2[valid_mask2]
+
     bin_mems1 = np.digitize(mean1, count_bins)
     bin_mems2 = np.digitize(mean2, count_bins)
-    slope1 = np.empty(0)
-    slope2 = np.empty(0)
-    
+
+    slope1, slope2 = np.empty(nboots), np.empty(nboots)
+    inds1_final, inds2_final = np.arange(len(mean1)), np.arange(len(mean2))
+
     for boot in range(nboots):
-        inds2remove1 = np.empty(0, dtype=int)
-        inds2remove2 = np.empty(0, dtype=int)
-        
+        inds2remove1, inds2remove2 = np.array([], dtype=int), np.array([], dtype=int)
+
         for i in range(np.min(count_bins), np.max(count_bins) + 1):
-            n1 = np.sum(bin_mems1 == i)
-            n2 = np.sum(bin_mems2 == i)
-            
+            n1, n2 = np.sum(bin_mems1 == i), np.sum(bin_mems2 == i)
+
             if n1 > n2:
-                inds = np.where(bin_mems1 == i)[0]
-                inds2remove1 = np.append(inds2remove1, np.random.choice(inds, n1 - n2, replace=False).astype(int))
+                remove_inds = np.random.choice(np.where(bin_mems1 == i)[0], n1 - n2, replace=False)
+                inds2remove1 = np.append(inds2remove1, remove_inds)
             elif n2 > n1:
-                inds = np.where(bin_mems2 == i)[0]
-                inds2remove2 = np.append(inds2remove2, np.random.choice(inds, n2 - n1, replace=False).astype(int))
-        
-        meantmp1 = np.delete(mean1, inds2remove1)
-        varstmp1 = np.delete(variance1, inds2remove1)
-        meantmp2 = np.delete(mean2, inds2remove2)
-        varstmp2 = np.delete(variance2, inds2remove2)
-        
-        model_1 = sm.OLS(varstmp1, meantmp1)
-        results1 = model_1.fit()
-        model_2 = sm.OLS(varstmp2, meantmp2)
-        results2 = model_2.fit()
-        
-        slope1 = np.append(slope1, results1.params[0])
-        slope2 = np.append(slope2, results2.params[0])
-    
-    return slope1, slope2, meantmp1, meantmp2
+                remove_inds = np.random.choice(np.where(bin_mems2 == i)[0], n2 - n1, replace=False)
+                inds2remove2 = np.append(inds2remove2, remove_inds)
+
+        #  track of final valid indices
+        inds1_final = np.setdiff1d(inds1_final, inds2remove1)
+        inds2_final = np.setdiff1d(inds2_final, inds2remove2)
+
+        meantmp1, varstmp1 = mean1[inds1_final], variance1[inds1_final]
+        meantmp2, varstmp2 = mean2[inds2_final], variance2[inds2_final]
+
+        model_1, model_2 = sm.OLS(varstmp1, meantmp1), sm.OLS(varstmp2, meantmp2)
+        results1, results2 = model_1.fit(), model_2.fit()
+
+        slope1[boot], slope2[boot] = results1.params[0], results2.params[0]
+
+    return slope1, slope2, meantmp1, meantmp2, inds1_final, inds2_final
+
 
 # Spike counting function for baseline and evoked responses
 def get_spike_counts(spike_times, stim_times, pre_time, post_time, initial_time=0.035):
@@ -152,9 +147,10 @@ for dataset_num in range(1, 2):
     # Mean Matching for Fano Factors
     spkC_low, spkC_high, FF_low, FF_high = np.array(spkC_low), np.array(spkC_high), np.array(FF_low), np.array(FF_high)
     count_bins = np.arange(0, 301, 1)
-    slope1, slope2, mean_low_matched, mean_high_matched = mean_match(spkC_low, spkC_high, FF_low, FF_high, count_bins)
+    slope1, slope2, mean_low_matched, mean_high_matched, matched_inds_low, matched_inds_high = mean_match(
+    spkC_low, spkC_high, FF_low, FF_high, count_bins)
 
-    # Plot mean-matched Fano factors
+    # Plot  Fano factors
     plt.figure(figsize=(12, 6))
 
     # Fano Factor scatter plot
@@ -166,23 +162,20 @@ for dataset_num in range(1, 2):
     plt.xlabel('Fano Factor Low')
     plt.ylabel('Fano Factor High')
    
-    
-
     # Matched Fano Factor bar plot
     plt.subplot(1, 2, 2)
-    FF_low_mean_matched = np.mean(FF_low[np.isin(spkC_low, mean_low_matched)])
-    FF_high_mean_matched = np.mean(FF_high[np.isin(spkC_high, mean_high_matched)])
-    # Get matched indices
-    matched_indices_low = np.isin(spkC_low, mean_low_matched)
-    matched_indices_high = np.isin(spkC_high, mean_high_matched)
+    # Apply filtering 
+    FF_low_matched = np.array(FF_low)[matched_inds_low]
+    FF_high_matched = np.array(FF_high)[matched_inds_high]
 
-   # Compute standard errors (SE) 
-    FF_low_matched_SE = np.std(FF_low[matched_indices_low], ddof=1) / np.sqrt(np.sum(matched_indices_low))
-    FF_high_matched_SE = np.std(FF_high[matched_indices_high], ddof=1) / np.sqrt(np.sum(matched_indices_high))
+    # matched indices
+    FF_low_mean_matched, FF_high_mean_matched = np.mean(FF_low_matched), np.mean(FF_high_matched)
+    FF_low_matched_SE, FF_high_matched_SE = sem(FF_low_matched), sem(FF_high_matched)
+
 
     plt.bar([1, 2], [FF_low_mean_matched, FF_high_mean_matched], yerr=[FF_low_matched_SE, FF_high_matched_SE], color=['gray', 'red'], capsize=5)
     plt.xticks([1, 2], ['Low', 'High'])
-    plt.ylabel('Fano Factor ')
+    plt.ylabel(' Mean-matched Fano Factor ')
 
     print("Original FF_low:", FF_low)
     print("Original FF_high:", FF_high)
