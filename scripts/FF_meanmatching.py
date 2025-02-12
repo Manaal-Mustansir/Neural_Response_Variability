@@ -151,10 +151,10 @@ for dataset_num in range(1, 2):
     spkC_low, spkC_high, FF_low, FF_high, count_bins)
 
     # Plot  Fano factors
-    plt.figure(figsize=(12, 6))
+    plt.figure(figsize=(18, 6))
 
     # Fano Factor scatter plot
-    plt.subplot(1, 2, 1)
+    plt.subplot(1, 3, 1)
     plt.plot(FF_low, FF_high, 'ko', markersize=3, markerfacecolor='None')
     plt.plot([0.5, 8], [0.5, 8], 'k-')
     plt.xscale('log')
@@ -163,27 +163,48 @@ for dataset_num in range(1, 2):
     plt.ylabel('Fano Factor High')
    
     # Matched Fano Factor bar plot
-    plt.subplot(1, 2, 2)
-    # Apply filtering 
+    plt.subplot(1, 3, 2)
+    # Get the number of units for each condition
+    n_low = len(FF_low)  # Count of values n
+    n_high = len(FF_high)
     FF_low_matched = np.array(FF_low)[matched_inds_low]
     FF_high_matched = np.array(FF_high)[matched_inds_high]
-
+    
+    n_matched_low = len(FF_low_matched)  # Number of units in matched condition
+    n_matched_high = len(FF_high_matched)
+    # Apply 
+    
     # matched indices
-    FF_low_mean_matched, FF_high_mean_matched = np.mean(FF_low_matched), np.mean(FF_high_matched)
+    FF_low_mean_matched, FF_high_mean_matched = np.nanmean(FF_low_matched), np.nanmean(FF_high_matched)
     FF_low_matched_SE, FF_high_matched_SE = sem(FF_low_matched), sem(FF_high_matched)
 
 
     plt.bar([1, 2], [FF_low_mean_matched, FF_high_mean_matched], yerr=[FF_low_matched_SE, FF_high_matched_SE], color=['gray', 'red'], capsize=5)
     plt.xticks([1, 2], ['Low', 'High'])
-    plt.ylabel(' Mean-matched Fano Factor ')
-
+    plt.ylabel('Mean-matched Fano Factor')
+    # Display `n` values above bars for Mean-Matched
+    plt.text(1, FF_low_mean_matched + 0.2, f"n={n_matched_low}", ha='center', fontsize=8, fontweight='bold')
+    plt.text(2, FF_high_mean_matched + 0.2, f"n={n_matched_high}", ha='center', fontsize=8, fontweight='bold')
     print("Original FF_low:", FF_low)
     print("Original FF_high:", FF_high)
     print("Matched FF_low:", FF_low_mean_matched)
     print("Matched FF_high:", FF_high_mean_matched)
-    # Save plots
-    plt.tight_layout()
-    plt.savefig(os.path.join(results_dir, 'mean_matched_fano_factors.svg'))
+    
+    FF_low_mean = np.nanmean(FF_low)
+    FF_high_mean = np.nanmean(FF_high)
+    FF_low_SE = sem(FF_low, nan_policy='omit')
+    FF_high_SE = sem(FF_high, nan_policy='omit')
+
+   # Plot Raw Fano Factor
+    plt.subplot(1, 3, 3)
+    plt.bar([1, 2], [FF_low_mean, FF_high_mean], yerr=[FF_low_SE, FF_high_SE], color=['gray', 'red'], capsize=5)
+    plt.xticks([1, 2], ['Low', 'High'])
+    plt.ylabel('Fano Factor Raw')
+    plt.text(1, FF_low_mean + 0.1, f"n={int(n_low)}", ha='center', fontsize=6, fontweight='bold')
+    plt.text(2, FF_high_mean + 0.1, f"n={int(n_high)}", ha='center', fontsize=6, fontweight='bold')
+
+    # Save and show plot
+    plt.savefig(os.path.join(results_dir, 'fano_factor.svg'))
     plt.show()
 
 
