@@ -24,45 +24,49 @@ penetration_date = '2024'
 monkey_name = 'Sansa'
 FIRING_RATE_THRESHOLD = 5
 
-def mean_match(mean1, mean2, variance1, variance2, count_bins, nboots=100):
 
-    # Remove NaNs
-    valid_mask1, valid_mask2 = ~np.isnan(mean1), ~np.isnan(mean2)
-    mean1, variance1 = mean1[valid_mask1], variance1[valid_mask1]
-    mean2, variance2 = mean2[valid_mask2], variance2[valid_mask2]
-
-    bin_mems1 = np.digitize(mean1, count_bins)
-    bin_mems2 = np.digitize(mean2, count_bins)
-
-    slope1, slope2 = np.empty(nboots), np.empty(nboots)
-    inds1_final, inds2_final = np.arange(len(mean1)), np.arange(len(mean2))
-
+def mean_match(mean1,mean2,variance1,variance2,count_bins,nboots=1000):
+    import statsmodels.api as sm
+    # the algorithm brakes with nans
+    variance1 = variance1[~np.isnan(mean1)]
+    mean1 = mean1[~np.isnan(mean1)]
+    variance2 = variance2[~np.isnan(mean2)]
+    mean2 = mean2[~np.isnan(mean2)]
+    
+    bin_mems1 = np.digitize(mean1,count_bins)
+    bin_mems2 = np.digitize(mean2,count_bins)
+    slope1 = np.empty(0)
+    slope2 = np.empty(0)
     for boot in range(nboots):
-        inds2remove1, inds2remove2 = np.array([], dtype=int), np.array([], dtype=int)
-
-        for i in range(np.min(count_bins), np.max(count_bins) + 1):
-            n1, n2 = np.sum(bin_mems1 == i), np.sum(bin_mems2 == i)
+        inds2remove1 = np.empty(0)
+        inds2remove2 = np.empty(0)
+        # arange uses half open interval [start,stop)
+        for i in np.arange(np.min(count_bins),np.max(count_bins)+1,1):
+            n1 = np.sum(bin_mems1 == i)
+            n2 = np.sum(bin_mems2 == i)
 
             if n1 > n2:
-                remove_inds = np.random.choice(np.where(bin_mems1 == i)[0], n1 - n2, replace=False)
-                inds2remove1 = np.append(inds2remove1, remove_inds)
+                inds = np.where(bin_mems1 == i)[0]
+                inds2remove1 = np.append(inds2remove1,np.random.choice(inds,n1-n2,replace=False))
             elif n2 > n1:
-                remove_inds = np.random.choice(np.where(bin_mems2 == i)[0], n2 - n1, replace=False)
-                inds2remove2 = np.append(inds2remove2, remove_inds)
+                inds = np.where(bin_mems2 == i)[0]
+                inds2remove2 = np.append(inds2remove2,np.random.choice(inds,n2-n1,replace=False))
+                                     
+        meantmp1 = np.delete(mean1, inds2remove1.astype(int))
+        varstmp1 = np.delete(variance1, inds2remove1.astype(int))
+        meantmp2 = np.delete(mean2, inds2remove2.astype(int))
+        varstmp2 = np.delete(variance2, inds2remove2.astype(int))
 
-        #  track of final valid indices
-        inds1_final = np.setdiff1d(inds1_final, inds2remove1)
-        inds2_final = np.setdiff1d(inds2_final, inds2remove2)
 
-        meantmp1, varstmp1 = mean1[inds1_final], variance1[inds1_final]
-        meantmp2, varstmp2 = mean2[inds2_final], variance2[inds2_final]
+        model_1  = sm.OLS(varstmp1, meantmp1)
+        results1 = model_1.fit()
+        model_2  = sm.OLS(varstmp2, meantmp2)
+        results2 = model_2.fit()
 
-        model_1, model_2 = sm.OLS(varstmp1, meantmp1), sm.OLS(varstmp2, meantmp2)
-        results1, results2 = model_1.fit(), model_2.fit()
-
-        slope1[boot], slope2[boot] = results1.params[0], results2.params[0]
-
-    return slope1, slope2, meantmp1, meantmp2, inds1_final, inds2_final, 
+        slope1 = np.append(slope1,results1.params[0])
+        slope2 = np.append(slope2,results2.params[0])
+        
+    return slope1,slope2,meantmp1,meantmp2
 
 
 # Spike counting function for baseline and evoked responses
@@ -159,8 +163,7 @@ for dataset_num in range(1, 2):
     # Mean Matching for Fano Factors
     spkC_low, spkC_high, FF_low, FF_high = np.array(spkC_low), np.array(spkC_high), np.array(FF_low), np.array(FF_high)
     count_bins = np.arange(0, 301, 1)
-    slope1, slope2, mean_low_matched, mean_high_matched, matched_inds_low, matched_inds_high = mean_match(
-    spkC_low, spkC_high, FF_low, FF_high, count_bins)
+    slope1, slope2, meantmp1, meantmp2 = mean_match(spkC_low, spkC_high, FF_low, FF_high, count_bins)
     
     # Plot  Fano factors
     plt.figure(figsize=(18, 6))
@@ -179,8 +182,9 @@ for dataset_num in range(1, 2):
     # Get the number of units for each condition
     n_low = len(FF_low)  # Count of values n
     n_high = len(FF_high)
-    FF_low_matched = np.array(FF_low)[matched_inds_low]
-    FF_high_matched = np.array(FF_high)[matched_inds_high]
+    
+    FF_low_matched = np.array(FF_low)[meantmp1.astype(int)]
+    FF_high_matched = np.array(FF_high)[meantmp2.astype(int)]
     
     n_matched_low = len(FF_low_matched)  # Number of units in matched condition
     n_matched_high = len(FF_high_matched)
@@ -231,8 +235,8 @@ for dataset_num in range(1, 2):
 
 
     # Plot for Mean-matched firing rates
-    FR_low_matched = np.array(FR_low)[matched_inds_low]
-    FR_high_matched = np.array(FR_high)[matched_inds_high]
+    FR_low_matched = np.array(FR_low)[meantmp1.astype(int)]
+    FR_high_matched = np.array(FR_high)[meantmp2.astype(int)]
     # matched indices
     FR_low_mean_matched, FR_high_mean_matched = np.nanmean(FR_low_matched), np.nanmean(FR_high_matched)
     FR_low_matched_SE, FR_high_matched_SE = sem(FR_low_matched), sem(FR_high_matched)
